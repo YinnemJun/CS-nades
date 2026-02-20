@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 道具查询</title>
+    <style>
+        /* 全局基础样式 */
+        body {
+            background-color: #1b1b1f; /* 深色背景，贴合 CS2 风格 */
+            color: white;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 主容器，限制最大宽度居中显示 */
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* 网格布局：自动计算列数，每列最小 280px */
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        /* 地图卡片样式 */
+        .map-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 320px; /* 卡片高度 */
+            border-radius: 12px; /* 圆角 */
+            text-decoration: none; /* 去除链接下划线 */
+            color: white;
+            overflow: hidden;
+            background-color: #2a2a2a; /* 背景图未加载时的占位颜色 */
+            
+            /* 动画过渡效果：变大和变亮 */
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                        filter 0.3s ease;
+        }
+
+        /* 鼠标悬浮时的动画效果 */
+        .map-card:hover {
+            transform: scale(1.05); /* 放大 5% */
+            filter: brightness(1.2); /* 亮度提升 20% */
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5); /* 添加一点阴影让浮动感更强 */
+        }
+
+        /* 卡片背景图 */
+        .map-card .bg-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 保证图片铺满不拉伸 */
+            opacity: 0.6; /* 默认稍微变暗一点，突出文字和 Logo */
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+
+        /* 鼠标悬浮时背景图恢复原亮度 */
+        .map-card:hover .bg-image {
+            opacity: 0.8; 
+        }
+
+        /* 卡片上的内容容器（Logo和名字） */
+        .map-content {
+            position: relative;
+            z-index: 2; /* 确保内容显示在背景图上方 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 地图 Logo 样式 */
+        .map-logo {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin-bottom: 15px;
+            /* 给 Logo 加点阴影防止在亮色背景上看不清 */
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6)); 
+        }
+
+        /* 地图名称样式 */
+        .map-name {
+            font-size: 32px;
+            font-weight: 900;
+            font-style: italic; /* 倾斜字体更符合 CS 的竞技感 */
+            text-transform: uppercase;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8); /* 文字阴影增强可读性 */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="map-grid">
+            <a href="dust2/index.html" class="map-card">
+                <img src="assets/bg-dust2.webp" alt="Dust 2 Background" class="bg-image">
+                <div class="map-content">
+                    <img src="assets/logo-dust2.webp" alt="Dust 2 Logo" class="map-logo">
+                    <div class="map-name">Dust 2</div>
+                </div>
+            </a>
+
+            <a href="mirage/index.html" class="map-card">
+                <img src="assets/bg-mirage.webp" alt="Mirage Background" class="bg-image">
+                <div class="map-content">
+                    <img src="assets/logo-mirage.webp" alt="Mirage Logo" class="map-logo">
+                    <div class="map-name">Mirage</div>
+                </div>
+            </a>
+
+            <a href="inferno/index.html" class="map-card">
+                <img src="assets/bg-inferno.webp" alt="Inferno Background" class="bg-image">
+                <div class="map-content">
+                    <img src="assets/logo-inferno.webp" alt="Inferno Logo" class="map-logo">
+                    <div class="map-name">Inferno</div>
+                </div>
+            </a>
+
+            <a href="nuke/index.html" class="map-card">
+                <img src="assets/bg-nuke.webp" alt="Nuke Background" class="bg-image">
+                <div class="map-content">
+                    <img src="assets/logo-nuke.webp" alt="Nuke Logo" class="map-logo">
+                    <div class="map-name">Nuke</div>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+</body>
+</html>
