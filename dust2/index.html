@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dust2 道具地图 - CS2 Nades</title>
+    <style>
+        /* ====== 全局基础样式 ====== */
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Arial', sans-serif; background-color: #1b1b1f; color: white; overflow: hidden; user-select: none; }
+        .main-container { display: flex; height: 100vh; }
+
+        /* ====== 左侧侧边栏 ====== */
+        .sidebar { width: 340px; min-width: 250px; max-width: 500px; background-color: #252529; padding: 30px; box-sizing: border-box; box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; z-index: 10; overflow-y: auto; flex-shrink: 0; }
+        .sidebar::-webkit-scrollbar { width: 6px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .resizer { width: 6px; background-color: #1b1b1f; cursor: col-resize; z-index: 11; flex-shrink: 0; transition: background-color 0.2s; }
+        .resizer:hover, .resizer.resizing { background-color: #ffb300; }
+        .back-link { color: #aaa; text-decoration: none; margin-bottom: 20px; font-size: 14px; }
+        .back-link:hover { color: white; }
+        .map-title { font-size: 32px; font-weight: 900; margin-bottom: 30px; font-style: italic; }
+        .nade-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+        .filter-btn { background-color: #3a3a3e; color: white; border: none; padding: 12px 20px; font-size: 18px; font-weight: bold; text-align: left; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; }
+        .filter-btn:hover { background-color: #4a4a4e; }
+        .filter-btn.active { background-color: #55555e; box-shadow: inset 6px 0 0 #fff; }
+        .filter-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+        .btn-icon { display: inline-block; width: 48px; height: 48px; margin-right: 15px; flex-shrink: 0; background-size: 100%; background-position: center; background-repeat: no-repeat; }
+        .icon-all { background-image: url('../assets/all-icon.png'); }
+        .icon-smoke { background-image: url('../assets/smoke-icon.png'); }
+        .icon-flash { background-image: url('../assets/flash-icon.png'); }
+        .icon-molotov { background-image: url('../assets/molotov-icon.png'); }
+
+        /* ====== 右侧地图区域 ====== */
+        .map-viewport { flex: 1; position: relative; overflow: hidden; background-color: #121214; }
+        .map-wrapper { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1); transform-origin: center center; display: inline-block; }
+        .game-map { display: block; max-height: 95vh; max-width: 100%; width: auto; height: auto; pointer-events: auto; image-rendering: high-quality; -webkit-backface-visibility: hidden; }
+
+        /* ====== 连线与投掷点样式 ====== */
+        svg.map-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+        .trajectory-line { stroke: #ffc107; stroke-width: 2.5px; stroke-dasharray: 6 4; opacity: 0.8; }
+        .throw-point { position: absolute; width: 16px; height: 16px; background-color: #ffc107; border-radius: 50%; transform: translate(-50%, -50%); z-index: 4; cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.8); border: 2px solid white; transition: transform 0.1s; }
+        .throw-point:hover { transform: translate(-50%, -50%) scale(1.4); }
+        .dev-throw-point { background-color: #00d2ff; }
+        .nade-marker { position: absolute; width: 36px; height: 36px; transform: translate(-50%, -50%); cursor: pointer; z-index: 5; transition: transform 0.2s, opacity 0.2s; background-size: contain; background-position: center; background-repeat: no-repeat; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6)); }
+        .nade-marker:hover { transform: translate(-50%, -50%) scale(1.2); }
+        .nade-marker.dimmed { opacity: 0; pointer-events: none; }
+        .badge { position: absolute; top: -6px; right: -8px; background-color: white; color: black; font-size: 13px; font-weight: bold; padding: 2px 6px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
+        .marker-smoke { background-image: url('../assets/smoke.svg'); }
+        .marker-flash { background-image: url('../assets/flash.svg'); }
+        .marker-molotov { background-image: url('../assets/molotov.svg'); }
+
+        /* ====== Hover 悬浮提示框 ====== */
+        .nade-tooltip { position: fixed; background: rgba(0,0,0,0.9); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; transform: translate(-50%, -100%); margin-top: -15px; border: 1px solid #ffb300; box-shadow: 0 8px 20px rgba(0,0,0,0.7); text-align: center; }
+        .nade-tooltip span { display: block; font-size: 12px; color: #ccc; font-weight: normal; margin-top: 5px; margin-bottom: 10px; }
+        .tooltip-img { width: 240px; height: auto; border-radius: 6px; border: 1px solid #444; background: #222; aspect-ratio: 16/9; object-fit: cover; }
+
+        /* ====== 左下角详情面板 ====== */
+        .bottom-left-panel { position: absolute; bottom: 20px; left: 20px; background-color: rgba(26, 26, 28, 0.95); border-radius: 12px; padding: 20px; border: 1px solid #444; display: none; flex-direction: column; gap: 12px; z-index: 50; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); backdrop-filter: blur(5px); animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .panel-close { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; line-height: 1; padding: 0; }
+        .panel-close:hover { color: white; }
+        .bottom-left-panel h4 { margin: 0; color: #ffb300; font-size: 18px; padding-right: 20px; }
+        .bottom-left-panel p { margin: 0; font-size: 13px; color: #ccc; }
+        .bl-images { display: flex; flex-direction: column; gap: 10px; }
+        .bl-img-box { background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #333; }
+        .bl-img-box span { display: block; font-size: 12px; color: #888; padding: 4px 8px; background: #222; border-bottom: 1px solid #333;}
+        .bl-img-box img { width: 100%; height: auto; aspect-ratio: 16/9; object-fit: cover; display: block; }
+        .bl-detail-btn { display: inline-block; background-color: #ffb300; color: black; text-align: center; padding: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; margin-top: 5px; cursor: pointer; transition: background 0.2s; }
+        .bl-detail-btn:hover { background-color: #e09e00; }
+
+        /* ====== 内置全屏详情覆盖层 (Detail Overlay) ====== */
+        .detail-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #121214; z-index: 2000; overflow-y: auto; display: none; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
+        .detail-overlay.active { opacity: 1; }
+        .detail-nav { background-color: #252529; padding: 20px 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 2010; }
+        .detail-back-btn { color: #aaa; background: #3a3a3e; border: none; padding: 8px 16px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.2s; }
+        .detail-back-btn:hover { background: #4a4a4e; color: white; }
+        .detail-header h1 { margin: 0; font-size: 28px; color: #ffb300; }
+        .detail-header p { margin: 5px 0 0 0; color: #ccc; font-size: 15px; }
+        .detail-content { max-width: 1000px; margin: 40px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 40px; width: 100%; box-sizing: border-box; }
+        
+        /* 步骤卡片样式 */
+        .step-card { background-color: #1a1a1c; border: 1px solid #333; border-radius: 12px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+        .step-card h2 { margin-top: 0; color: #fff; border-bottom: 2px solid #333; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .step-badge { background-color: #ffb300; color: black; padding: 4px 10px; border-radius: 6px; font-size: 16px; font-weight: bold; }
+        .img-wrapper { width: 100%; border-radius: 8px; overflow: hidden; background-color: #000; display: flex; justify-content: center; }
+        .img-wrapper img { max-width: 100%; height: auto; display: block; }
+        #step2-container { display: none; }
+
+        /* ====== 开发者模式 ====== */
+        .dev-toggle-container { position: absolute; top: 20px; left: 20px; background-color: rgba(0, 0, 0, 0.8); padding: 15px 20px; border-radius: 8px; z-index: 20; border: 1px solid #444; display: flex; flex-direction: column; gap: 10px; }
+        .dev-toggle-container label { display: flex; align-items: center; cursor: pointer; font-size: 16px; font-weight: bold; color: #ffb300; }
+        .dev-toggle-container input { margin-right: 10px; transform: scale(1.2); cursor: pointer; }
+        .dev-hint { font-size: 13px; color: #aaa; font-family: monospace; }
+        .zoom-hint { position: absolute; bottom: 20px; right: 20px; color: #777; font-size: 12px; pointer-events: none; }
+        #devCursor { position: fixed; width: 36px; height: 36px; transform: translate(-50%, -50%); pointer-events: none; z-index: 999; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: 0.6; display: none; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .modal-content { background-color: #252529; padding: 30px; border-radius: 12px; width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 15px; }
+        .modal-content h3 { margin: 0; color: #ffb300; font-style: italic; }
+        .modal-content label { display: flex; flex-direction: column; font-size: 14px; color: #ccc; gap: 5px; }
+        .modal-content input, .modal-content select { padding: 10px; border-radius: 6px; border: 1px solid #555; background-color: #1b1b1f; color: white; font-size: 16px; }
+        .modal-content textarea { background-color: #121214; color: #00ff00; font-family: monospace; padding: 10px; border: 1px solid #444; border-radius: 6px; resize: none; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 10px; }
+        .modal-btns button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .btn-confirm { background-color: #ffb300; color: black; }
+        .btn-confirm:hover { background-color: #e09e00; }
+        .btn-cancel { background-color: #444; color: white; }
+        .btn-cancel:hover { background-color: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="sidebar" id="sidebar">
+            <a href="../index.html" class="back-link">← 返回地图选择</a>
+            <div class="map-title">Dust2</div>
+            <div class="filter-section">
+                <div class="nade-filters" id="filter-buttons">
+                    <button class="filter-btn active" data-target="all" id="btn-all"><span class="btn-icon icon-all"></span> All Nades</button>
+                    <button class="filter-btn" data-target="smoke" id="btn-smoke"><span class="btn-icon icon-smoke"></span> Smokes</button>
+                    <button class="filter-btn" data-target="molotov" id="btn-molotov"><span class="btn-icon icon-molotov"></span> Molotovs</button>
+                    <button class="filter-btn" data-target="flash" id="btn-flash"><span class="btn-icon icon-flash"></span> Flashbangs</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="resizer" id="resizer"></div>
+
+        <div class="map-viewport" id="mapViewport">
+            <div id="hoverTooltip" class="nade-tooltip">
+                <div id="ttName">名称</div>
+                <span id="ttThrow">投掷方式</span>
+                <img id="ttLineupImg" class="tooltip-img" src="" alt="Lineup">
+            </div>
+
+            <div id="bottomLeftPanel" class="bottom-left-panel">
+                <button class="panel-close" id="panelCloseBtn">×</button>
+                <h4 id="blName">道具名称</h4>
+                <p id="blThrow">投掷方式</p>
+                <div class="bl-images">
+                    <div class="bl-img-box">
+                        <span>瞄准点 (Lineup)</span>
+                        <img id="blLineupImg" src="" alt="Lineup">
+                    </div>
+                    <div class="bl-img-box">
+                        <span>效果图 (Result)</span>
+                        <img id="blResultImg" src="" alt="Result">
+                    </div>
+                </div>
+                <span id="blDetailBtn" class="bl-detail-btn">查看详细教学 ➔</span>
+            </div>
+
+            <div class="dev-toggle-container">
+                <label><input type="checkbox" id="devModeSwitch"> ⚙️ 开发者模式</label>
+                <div class="dev-hint" id="devHintText">当前: 浏览模式</div>
+            </div>
+            
+            <div class="zoom-hint">点击背景可重置视图 | 滚轮缩放</div>
+
+            <div class="map-wrapper" id="mapWrapper">
+                <img src="map-dust2.webp" alt="Dust2 Map" class="game-map" id="gameMap" draggable="false">
+                <svg id="lineLayer" class="map-lines" style="width: 100%; height: 100%;"></svg>
+                <div id="throw-points-container"></div>
+                <div id="markers-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailOverlay" class="detail-overlay">
+        <div class="detail-nav">
+            <button class="detail-back-btn" id="overlayBackBtn">← 返回地图</button>
+            <div class="detail-header">
+                <h1 id="overlayTitle">道具名称</h1>
+                <p id="overlaySubtitle">投掷方式</p>
+            </div>
+        </div>
+        
+        <div class="detail-content">
+            <div class="step-card">
+                <h2><span class="step-badge">1</span> 站位 (Position)</h2>
+                <div class="img-wrapper">
+                    <img id="overlayPos" src="" alt="Position">
+                </div>
+            </div>
+
+            <div class="step-card">
+                <h2><span class="step-badge">2</span> 瞄准点 (Lineup)</h2>
+                <div class="img-wrapper">
+                    <img id="overlayLineup" src="" alt="Lineup">
+                </div>
+            </div>
+
+            <div class="step-card" id="step2-container">
+                <h2><span class="step-badge">3</span> 移动到此处投掷 (Action)</h2>
+                <div class="img-wrapper">
+                    <img id="overlayStep2" src="" alt="跑动位置">
+                </div>
+            </div>
+
+            <div class="step-card">
+                <h2><span class="step-badge" id="resultBadge">3</span> 最终落点效果 (Result)</h2>
+                <div class="img-wrapper">
+                    <img id="overlayResult" src="" alt="Result">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="devCursor"></div>
+    <div id="devModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>生成新道具代码</h3>
+            <div id="devInputArea">
+                <label>道具名称<input type="text" id="devNadeName" placeholder="输入名称..."></label>
+                <label>投掷方式
+                    <select id="devNadeThrow">
+                        <option value="Standing">站立 (Standing)</option>
+                        <option value="Jump Throw">跳投 (Jump Throw)</option>
+                        <option value="Running">跑动 (Running)</option>
+                        <option value="Running Jump Throw">跑动跳投</option>
+                    </select>
+                </label>
+                <div class="modal-btns">
+                    <button class="btn-cancel" id="devCancelBtn">取消</button>
+                    <button class="btn-confirm" id="devGenerateBtn">生成代码</button>
+                </div>
+            </div>
+            <div id="devOutputArea" style="display: none; flex-direction: column; gap: 10px;">
+                <label style="color: #00ff00;">代码已生成！</label>
+                <textarea id="devCodeOutput" rows="9" readonly></textarea>
+                <button class="btn-confirm" id="devCloseBtn">完成并关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="nades.js"></script>
+
+    <script>
+        const mapViewport = document.getElementById('mapViewport');
+        const mapWrapper = document.getElementById('mapWrapper');
+        const gameMap = document.getElementById('gameMap');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const markersContainer = document.getElementById('markers-container');
+        const throwPointsContainer = document.getElementById('throw-points-container');
+        const lineLayer = document.getElementById('lineLayer');
+        
+        // Tooltip 和 左下角 DOM
+        const hoverTooltip = document.getElementById('hoverTooltip');
+        const ttName = document.getElementById('ttName');
+        const ttThrow = document.getElementById('ttThrow');
+        const ttLineupImg = document.getElementById('ttLineupImg');
+
+        const bottomLeftPanel = document.getElementById('bottomLeftPanel');
+        const blName = document.getElementById('blName');
+        const blThrow = document.getElementById('blThrow');
+        const blLineupImg = document.getElementById('blLineupImg');
+        const blResultImg = document.getElementById('blResultImg');
+        const blDetailBtn = document.getElementById('blDetailBtn');
+        const panelCloseBtn = document.getElementById('panelCloseBtn');
+
+        // ====== 覆盖层 Overlay DOM ======
+        const detailOverlay = document.getElementById('detailOverlay');
+        const overlayBackBtn = document.getElementById('overlayBackBtn');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlaySubtitle = document.getElementById('overlaySubtitle');
+        const overlayPos = document.getElementById('overlayPos');       // 1. 站位
+        const overlayLineup = document.getElementById('overlayLineup'); // 2. 瞄点
+        const overlayStep2 = document.getElementById('overlayStep2');   // 3. 跑动
+        const overlayResult = document.getElementById('overlayResult'); // 4. 结果
+        const step2Container = document.getElementById('step2-container');
+        const resultBadge = document.getElementById('resultBadge');
+
+        // Dev 模式
+        const devModeSwitch = document.getElementById('devModeSwitch');
+        const devHintText = document.getElementById('devHintText');
+        const btnAll = document.getElementById('btn-all');
+        const btnSmoke = document.getElementById('btn-smoke');
+        const devCursor = document.getElementById('devCursor');
+        const devModal = document.getElementById('devModal');
+
+        let isFocusMode = false; let hasDragged = false; 
+        let isDevMode = false; let devStep = 0; 
+        let devNade = { type: 'smoke', endX: '', endY: '', startX: '', startY: '' };
+
+        // 拖拽边栏
+        const sidebar = document.getElementById('sidebar');
+        const resizer = document.getElementById('resizer');
+        let isSidebarResizing = false;
+        resizer.addEventListener('mousedown', () => { isSidebarResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; });
+        window.addEventListener('mousemove', (e) => { if (isSidebarResizing) sidebar.style.width = e.clientX + 'px'; });
+        window.addEventListener('mouseup', () => { if (isSidebarResizing) { isSidebarResizing = false; resizer.classList.remove('resizing'); document.body.style.cursor = ''; } });
+
+        panelCloseBtn.addEventListener('click', () => { bottomLeftPanel.style.display = 'none'; });
+
+        function getIconUrl(type) {
+            if (type === 'smoke') return '../assets/smoke.svg';
+            if (type === 'flash') return '../assets/flash.svg';
+            if (type === 'molotov') return '../assets/molotov.svg';
+            return '';
+        }
+
+        function renderMarkers() {
+            markersContainer.innerHTML = '';
+            const groupedNades = {};
+            nadesData.forEach(nade => {
+                const ex = parseFloat(nade.endX).toFixed(2); const ey = parseFloat(nade.endY).toFixed(2);
+                const key = `${ex}-${ey}-${nade.type}`;
+                if (!groupedNades[key]) groupedNades[key] = { type: nade.type, endX: ex, endY: ey, throws: [] };
+                groupedNades[key].throws.push(nade);
+            });
+            Object.keys(groupedNades).forEach(key => {
+                const group = groupedNades[key];
+                const marker = document.createElement('div');
+                marker.className = `nade-marker marker-${group.type}`;
+                marker.style.left = `${group.endX}%`; marker.style.top = `${group.endY}%`;
+                marker.dataset.type = group.type; marker.dataset.endx = group.endX; marker.dataset.endy = group.endY;
+                if (group.throws.length > 1) {
+                    const badge = document.createElement('div'); badge.className = 'badge'; badge.textContent = group.throws.length; marker.appendChild(badge);
+                }
+                markersContainer.appendChild(marker);
+            });
+            applyFilters(); 
+        }
+
+        // ==========================================
+        // 渲染内部覆盖层 (Overlay) - 4 个步骤逻辑
+        // ==========================================
+        function openDetailOverlay(nadeData) {
+            // 直接使用原始名字，确保本地路径正确
+            const name = nadeData.name;
+            
+            overlayTitle.textContent = name;
+            overlaySubtitle.textContent = `投掷方式：${nadeData.throwType} | 类型：${nadeData.type.toUpperCase()}`;
+
+            // 配置图片 (全部统一为 .png 格式)
+            overlayPos.src = `./lineup/${name}_pos.png`;      // 步骤 1
+            overlayLineup.src = `./lineup/${name}.png`;       // 步骤 2
+            overlayResult.src = `./result/${name}.png`;       // 步骤 3或4
+
+            // 跑动图处理
+            step2Container.style.display = 'none';
+            resultBadge.textContent = '3'; // 默认无跑动，最后一步是 3
+            
+            overlayStep2.src = ''; 
+            overlayStep2.onload = function() {
+                step2Container.style.display = 'block'; 
+                resultBadge.textContent = '4'; // 有跑动，最后一步变成 4
+            };
+            overlayStep2.onerror = function() { console.log('此道具没有跑动图'); };
+            overlayStep2.src = `./lineup/${name}_step2.png`;
+
+            detailOverlay.style.display = 'flex';
+            setTimeout(() => { detailOverlay.classList.add('active'); }, 10);
+        }
+
+        overlayBackBtn.addEventListener('click', () => {
+            detailOverlay.classList.remove('active');
+            setTimeout(() => { detailOverlay.style.display = 'none'; }, 300); 
+        });
+
+        // 交互悬浮和点击
+        function handlePointEnter(e, nadeData) {
+            if (isDevMode || hasDragged) return;
+            ttName.textContent = nadeData.name;
+            ttThrow.textContent = `投掷: ${nadeData.throwType}`;
+            ttLineupImg.style.display = 'block';
+            ttLineupImg.src = `./lineup/${nadeData.name}.png`; // 改为 .png 且去掉 encode
+            ttLineupImg.onerror = () => ttLineupImg.style.display = 'none';
+            hoverTooltip.style.display = 'block';
+            const rect = e.target.getBoundingClientRect();
+            hoverTooltip.style.left = (rect.left + rect.width / 2) + 'px'; hoverTooltip.style.top = rect.top + 'px';
+        }
+
+        function handlePointLeave() {
+            if (isDevMode) return; hoverTooltip.style.display = 'none'; 
+        }
+
+        function handlePointClick(e, nadeData) {
+            if (isDevMode || hasDragged) return;
+            blName.textContent = nadeData.name;
+            blThrow.textContent = `投掷方式：${nadeData.throwType}`;
+            
+            blLineupImg.src = `./lineup/${nadeData.name}.png`; // 改为 .png 且去掉 encode
+            blResultImg.src = `./result/${nadeData.name}.png`; // 改为 .png 且去掉 encode
+            
+            blDetailBtn.onclick = () => openDetailOverlay(nadeData);
+            bottomLeftPanel.style.display = 'flex';
+        }
+
+        // ====== 剩下的开发者模式和地图拖拽代码 ======
+        devModeSwitch.addEventListener('change', (e) => {
+            isDevMode = e.target.checked; resetFocusMode();
+            if (isDevMode) {
+                btnAll.classList.add('disabled');
+                if (btnAll.classList.contains('active')) { btnAll.classList.remove('active'); btnSmoke.classList.add('active'); }
+                devCursor.style.display = 'block'; goToDevStep1();
+            } else {
+                btnAll.classList.remove('disabled'); devCursor.style.display = 'none'; devStep = 0;
+                devHintText.textContent = "当前: 浏览模式"; devHintText.style.color = "#aaa";
+                throwPointsContainer.innerHTML = ''; renderMarkers(); 
+            }
+            applyFilters();
+        });
+
+        function goToDevStep1() {
+            devStep = 1; devNade.type = document.querySelector('.filter-btn.active').getAttribute('data-target');
+            devHintText.textContent = "第1步: 请在地图上点击选择【落点】"; devHintText.style.color = "#00ff00";
+            devCursor.style.backgroundImage = `url('${getIconUrl(devNade.type)}')`; throwPointsContainer.innerHTML = ''; 
+            document.querySelectorAll('.nade-marker').forEach(m => m.classList.remove('dimmed'));
+        }
+
+        function goToDevStep2() {
+            devStep = 2; devHintText.textContent = "第2步: 请在地图上点击选择【起点】"; devHintText.style.color = "#00d2ff";
+            document.querySelectorAll('.nade-marker').forEach(m => m.classList.add('dimmed'));
+            devCursor.style.backgroundImage = 'none'; devCursor.style.backgroundColor = '#00d2ff'; devCursor.style.borderRadius = '50%';
+            devCursor.style.width = '16px'; devCursor.style.height = '16px'; devCursor.style.border = '2px solid white';
+            throwPointsContainer.innerHTML = '';
+            nadesData.forEach(nade => {
+                if (nade.type === devNade.type) {
+                    const pt = document.createElement('div'); pt.className = 'throw-point dev-throw-point';
+                    pt.style.left = `${nade.startX}%`; pt.style.top = `${nade.startY}%`;
+                    pt.dataset.startx = parseFloat(nade.startX).toFixed(2); pt.dataset.starty = parseFloat(nade.startY).toFixed(2);
+                    throwPointsContainer.appendChild(pt);
+                }
+            });
+        }
+
+        function showDevModal() {
+            devCursor.style.display = 'none'; devModal.style.display = 'flex';
+            document.getElementById('devInputArea').style.display = 'block'; document.getElementById('devOutputArea').style.display = 'none';
+            document.getElementById('devNadeName').value = ''; document.getElementById('devNadeName').focus();
+        }
+
+        document.getElementById('devCancelBtn').addEventListener('click', () => { devModal.style.display = 'none'; devCursor.style.display = 'block'; goToDevStep1(); });
+        document.getElementById('devGenerateBtn').addEventListener('click', () => {
+            const codeOutput = `{\n    id: "n-${Date.now().toString().slice(-6)}",\n    type: "${devNade.type}",\n    name: "${document.getElementById('devNadeName').value || '未命名道具'}",\n    startX: "${devNade.startX}", startY: "${devNade.startY}",\n    endX: "${devNade.endX}", endY: "${devNade.endY}",\n    throwType: "${document.getElementById('devNadeThrow').value}"\n},`;
+            document.getElementById('devCodeOutput').value = codeOutput; document.getElementById('devInputArea').style.display = 'none'; document.getElementById('devOutputArea').style.display = 'flex'; document.getElementById('devCodeOutput').select();
+        });
+        document.getElementById('devCloseBtn').addEventListener('click', () => {
+            devModal.style.display = 'none'; devCursor.style.display = 'block'; devCursor.style.width = '36px'; devCursor.style.height = '36px';
+            devCursor.style.border = 'none'; devCursor.style.backgroundColor = 'transparent'; devCursor.style.borderRadius = '0'; goToDevStep1(); 
+        });
+
+        function getMapPercents(e) { const rect = gameMap.getBoundingClientRect(); return { x: (((e.clientX - rect.left) / rect.width) * 100).toFixed(2), y: (((e.clientY - rect.top) / rect.height) * 100).toFixed(2) }; }
+
+        mapViewport.addEventListener('click', (e) => {
+            if (hasDragged) return; 
+            if (!isDevMode) {
+                const marker = e.target.closest('.nade-marker');
+                if (marker) {
+                    const ex = marker.dataset.endx; const ey = marker.dataset.endy; const type = marker.dataset.type;
+                    const throws = nadesData.filter(n => parseFloat(n.endX).toFixed(2) === ex && parseFloat(n.endY).toFixed(2) === ey && n.type === type);
+                    enterFocusMode(marker, throws, ex, ey); return;
+                }
+                if(e.target.closest('.throw-point')) return; 
+                resetFocusMode(); return;
+            }
+            if (isDevMode) {
+                const coords = getMapPercents(e);
+                if (devStep === 1) { const marker = e.target.closest('.nade-marker'); if (marker) { devNade.endX = marker.dataset.endx; devNade.endY = marker.dataset.endy; } else { devNade.endX = coords.x; devNade.endY = coords.y; } goToDevStep2(); } 
+                else if (devStep === 2) { const throwPoint = e.target.closest('.dev-throw-point'); if (throwPoint) { devNade.startX = throwPoint.dataset.startx; devNade.startY = throwPoint.dataset.starty; } else { devNade.startX = coords.x; devNade.startY = coords.y; } showDevModal(); }
+            }
+        });
+
+        function enterFocusMode(clickedMarker, throwsData, endX, endY) {
+            isFocusMode = true; document.querySelectorAll('.nade-marker').forEach(m => { if (m !== clickedMarker) m.classList.add('dimmed'); });
+            lineLayer.innerHTML = ''; throwPointsContainer.innerHTML = '';
+            throwsData.forEach(data => {
+                const throwPoint = document.createElement('div'); throwPoint.className = 'throw-point';
+                throwPoint.style.left = `${parseFloat(data.startX).toFixed(2)}%`; throwPoint.style.top = `${parseFloat(data.startY).toFixed(2)}%`;
+                throwPoint.addEventListener('mouseenter', (e) => handlePointEnter(e, data)); throwPoint.addEventListener('mouseleave', handlePointLeave); throwPoint.addEventListener('click', (e) => handlePointClick(e, data));
+                throwPointsContainer.appendChild(throwPoint);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', `${parseFloat(data.startX).toFixed(2)}%`); line.setAttribute('y1', `${parseFloat(data.startY).toFixed(2)}%`); line.setAttribute('x2', `${endX}%`); line.setAttribute('y2', `${endY}%`); line.classList.add('trajectory-line'); lineLayer.appendChild(line);
+            });
+        }
+
+        function resetFocusMode() {
+            if (!isFocusMode) return; isFocusMode = false; document.querySelectorAll('.nade-marker').forEach(m => m.classList.remove('dimmed')); lineLayer.innerHTML = ''; throwPointsContainer.innerHTML = ''; hoverTooltip.style.display = 'none'; bottomLeftPanel.style.display = 'none'; applyFilters();
+        }
+
+        function applyFilters() { const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-target'); document.querySelectorAll('.nade-marker').forEach(marker => { if (activeFilter === 'all' || marker.dataset.type === activeFilter) marker.style.display = 'block'; else marker.style.display = 'none'; }); }
+
+        filterBtns.forEach(btn => { btn.addEventListener('click', () => { if (btn.classList.contains('disabled')) return; resetFocusMode(); filterBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); if (isDevMode) { goToDevStep1(); devCursor.style.width = '36px'; devCursor.style.height = '36px'; devCursor.style.border = 'none'; devCursor.style.backgroundColor = 'transparent'; devCursor.style.borderRadius = '0'; } applyFilters(); }); });
+
+        let scale = 1; let translateX = 0; let translateY = 0; let isDragging = false; let startX, startY;
+        function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+        function updateMapTransform() { const rect = mapViewport.getBoundingClientRect(); const scaledWidth = mapWrapper.offsetWidth * scale; const scaledHeight = mapWrapper.offsetHeight * scale; const bufferX = rect.width / 3; const bufferY = rect.height / 3; const maxTx = Math.max(0, (scaledWidth - rect.width) / 2) + bufferX; const maxTy = Math.max(0, (scaledHeight - rect.height) / 2) + bufferY; translateX = clamp(translateX, -maxTx, maxTx); translateY = clamp(translateY, -maxTy, maxTy); mapWrapper.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`; }
+        
+        mapViewport.addEventListener('wheel', (e) => { e.preventDefault(); const scaleStep = 0.15; const oldScale = scale; if (e.deltaY > 0) scale = Math.max(1, scale - scaleStep); else scale = Math.min(4.0, scale + scaleStep); if (scale !== oldScale) { const rect = mapViewport.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const ratio = scale / oldScale - 1; translateX -= (mouseX - rect.width / 2 - translateX) * ratio; translateY -= (mouseY - rect.height / 2 - translateY) * ratio; updateMapTransform(); } });
+        mapViewport.addEventListener('mousedown', (e) => { if (e.button === 0 && !isSidebarResizing) { isDragging = true; hasDragged = false; startX = e.clientX - translateX; startY = e.clientY - translateY; } });
+        window.addEventListener('mousemove', (e) => { if (isDragging && !isSidebarResizing) { translateX = e.clientX - startX; translateY = e.clientY - startY; updateMapTransform(); } if (isDevMode && devStep > 0) { devCursor.style.left = e.clientX + 'px'; devCursor.style.top = e.clientY + 'px'; } });
+        window.addEventListener('mouseup', () => { isDragging = false; setTimeout(() => hasDragged = false, 50); });
+
+        renderMarkers(); updateMapTransform();
+    </script>
+</body>
+</html>
