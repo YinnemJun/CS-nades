@@ -2,12 +2,16 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CS2 Nades - 道具教学</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CS2 Nades - 道具地图</title>
     <style>
         /* ====== 全局基础样式 ====== */
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Arial', sans-serif; background-color: #1b1b1f; color: white; overflow: hidden; user-select: none; }
-        .main-container { display: flex; height: 100vh; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Arial', sans-serif; background-color: #1b1b1f; color: white; overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .main-container { display: flex; height: 100vh; position: relative; }
+
+        /* ====== 移动端专用 UI ====== */
+        .mobile-menu-btn { display: none; position: absolute; top: 15px; left: 15px; z-index: 100; background: rgba(37, 37, 41, 0.95); color: #ffb300; border: 1px solid #555; padding: 10px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 9; opacity: 0; transition: opacity 0.3s ease; }
 
         /* ====== 左侧侧边栏 ====== */
         .sidebar { width: 340px; min-width: 250px; max-width: 500px; background-color: #252529; padding: 30px; box-sizing: border-box; box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; z-index: 10; overflow-y: auto; flex-shrink: 0; }
@@ -25,14 +29,13 @@
         .filter-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
         .btn-icon { display: inline-block; width: 48px; height: 48px; margin-right: 15px; flex-shrink: 0; background-size: 100%; background-position: center; background-repeat: no-repeat; }
         
-        /* 【路径修改 1】左边栏的图标，使用带有 -icon 的 png 图片，放在 assets 文件夹中 */
         .icon-all { background-image: url('assets/all-icon.png'); }
         .icon-smoke { background-image: url('assets/smoke-icon.png'); }
         .icon-flash { background-image: url('assets/flash-icon.png'); }
         .icon-molotov { background-image: url('assets/molotov-icon.png'); }
 
         /* ====== 右侧地图区域 ====== */
-        .map-viewport { flex: 1; position: relative; overflow: hidden; background-color: #121214; }
+        .map-viewport { flex: 1; position: relative; overflow: hidden; background-color: #121214; touch-action: none; /* 防止移动端双击缩放 */ }
         .map-wrapper { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1); transform-origin: center center; display: inline-block; }
         .game-map { display: block; max-height: 95vh; max-width: 100%; width: auto; height: auto; pointer-events: auto; image-rendering: high-quality; -webkit-backface-visibility: hidden; }
 
@@ -47,7 +50,6 @@
         .nade-marker.dimmed { opacity: 0; pointer-events: none; }
         .badge { position: absolute; top: -6px; right: -8px; background-color: white; color: black; font-size: 13px; font-weight: bold; padding: 2px 6px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
         
-        /* 【路径修改 2】地图上的落点标记，使用 svg 图片，放在 assets 文件夹中 */
         .marker-smoke { background-image: url('assets/smoke.svg'); }
         .marker-flash { background-image: url('assets/flash.svg'); }
         .marker-molotov { background-image: url('assets/molotov.svg'); }
@@ -91,8 +93,7 @@
         /* 瞄点放大图 (画中画效果) */
         .lineup-wrapper { position: relative; }
         .lineup-close-img { position: absolute; bottom: 20px; right: 20px; width: 25%; min-width: 120px; max-width: 250px; aspect-ratio: 1 / 1; object-fit: cover; border: 3px solid #ffb300; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,0,0,0.8); display: none; z-index: 10; }
-        @media (max-width: 768px) { .lineup-close-img { bottom: 10px; right: 10px; width: 30%; border-width: 2px; } }
-
+        
         /* ====== 开发者模式 ====== */
         .dev-toggle-container { position: absolute; top: 20px; left: 20px; background-color: rgba(0, 0, 0, 0.8); padding: 15px 20px; border-radius: 8px; z-index: 20; border: 1px solid #444; display: flex; flex-direction: column; gap: 10px; }
         .dev-toggle-container label { display: flex; align-items: center; cursor: pointer; font-size: 16px; font-weight: bold; color: #ffb300; }
@@ -100,6 +101,7 @@
         .dev-hint { font-size: 13px; color: #aaa; font-family: monospace; }
         .zoom-hint { position: absolute; bottom: 20px; right: 20px; color: #777; font-size: 12px; pointer-events: none; }
         #devCursor { position: fixed; width: 36px; height: 36px; transform: translate(-50%, -50%); pointer-events: none; z-index: 999; background-size: contain; background-position: center; background-repeat: no-repeat; opacity: 0.6; display: none; }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0,0,0,0.7); z-index: 1000; display: flex; justify-content: center; align-items: center; }
         .modal-content { background-color: #252529; padding: 30px; border-radius: 12px; width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 15px; }
         .modal-content h3 { margin: 0; color: #ffb300; font-style: italic; }
@@ -112,11 +114,43 @@
         .btn-confirm:hover { background-color: #e09e00; }
         .btn-cancel { background-color: #444; color: white; }
         .btn-cancel:hover { background-color: #555; }
+
+        /* ========================================================= */
+        /* ================= 【适配核心 2】手机端响应式 ================= */
+        /* ========================================================= */
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: block; }
+            
+            /* 侧边栏变为滑动抽屉 */
+            .sidebar { position: fixed; top: 0; left: -100%; height: 100vh; width: 85% !important; max-width: 320px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
+            .sidebar.open { left: 0; }
+            .sidebar-overlay.active { display: block; opacity: 1; }
+            .resizer { display: none; } /* 手机上隐藏拖拽条 */
+            
+            /* 释放地图空间，全屏显示 */
+            .game-map { max-width: 100vw; height: auto; }
+            
+            /* 面板自适应缩小 */
+            .bottom-left-panel { width: calc(100% - 30px); left: 15px; bottom: 15px; max-height: 50vh; overflow-y: auto; padding: 15px; }
+            .dev-toggle-container { top: auto; bottom: 80px; left: 15px; transform: scale(0.9); transform-origin: bottom left; }
+            .zoom-hint { display: none; } /* 手机上隐藏提示文字，保持简洁 */
+            
+            /* 手机端禁用 Hover Tooltip（因为手机是点击交互） */
+            .nade-tooltip { display: none !important; }
+            .throw-point:hover { transform: translate(-50%, -50%) scale(1); } /* 取消起点的悬浮放大 */
+            
+            /* 详情大图页面的导航条自适应 */
+            .detail-nav { flex-direction: column; align-items: flex-start; gap: 10px; padding: 15px 20px; }
+            .detail-header h1 { font-size: 22px; }
+            .lineup-close-img { bottom: 10px; right: 10px; width: 30%; border-width: 2px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="main-container">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
         <div class="sidebar" id="sidebar">
             <a href="index.html" class="back-link">← 返回地图选择</a>
             <div class="map-title" id="mapTitle">Loading...</div>
@@ -133,6 +167,8 @@
         <div class="resizer" id="resizer"></div>
 
         <div class="map-viewport" id="mapViewport">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">☰ 菜单 & 筛选</button>
+
             <div id="hoverTooltip" class="nade-tooltip">
                 <div id="ttName">名称</div>
                 <span id="ttThrow">投掷方式</span>
@@ -161,7 +197,7 @@
                 <div class="dev-hint" id="devHintText">当前: 浏览模式</div>
             </div>
             
-            <div class="zoom-hint">点击背景可重置视图 | 滚轮缩放</div>
+            <div class="zoom-hint">点击背景可重置视图 | 滚轮/双指缩放</div>
 
             <div class="map-wrapper" id="mapWrapper">
                 <img src="" alt="Game Map" class="game-map" id="gameMap" draggable="false">
@@ -180,15 +216,11 @@
                 <p id="overlaySubtitle">投掷方式</p>
             </div>
         </div>
-        
         <div class="detail-content">
             <div class="step-card">
                 <h2><span class="step-badge">1</span> 站位 (Position)</h2>
-                <div class="img-wrapper">
-                    <img id="overlayPos" src="" alt="Position">
-                </div>
+                <div class="img-wrapper"><img id="overlayPos" src="" alt="Position"></div>
             </div>
-
             <div class="step-card">
                 <h2><span class="step-badge">2</span> 瞄准点 (Lineup)</h2>
                 <div class="img-wrapper lineup-wrapper">
@@ -196,19 +228,13 @@
                     <img id="overlayLineupClose" class="lineup-close-img" src="" alt="准星放大图">
                 </div>
             </div>
-
             <div class="step-card" id="step2-container">
                 <h2><span class="step-badge">3</span> 移动到此处投掷 (Action)</h2>
-                <div class="img-wrapper">
-                    <img id="overlayStep2" src="" alt="跑动位置">
-                </div>
+                <div class="img-wrapper"><img id="overlayStep2" src="" alt="跑动位置"></div>
             </div>
-
             <div class="step-card">
                 <h2><span class="step-badge" id="resultBadge">3</span> 最终落点效果 (Result)</h2>
-                <div class="img-wrapper">
-                    <img id="overlayResult" src="" alt="Result">
-                </div>
+                <div class="img-wrapper"><img id="overlayResult" src="" alt="Result"></div>
             </div>
         </div>
     </div>
@@ -241,21 +267,17 @@
     </div>
 
     <script>
-        // ====== 通过网址读取当前地图信息 ======
         const urlParams = new URLSearchParams(window.location.search);
         const currentMap = urlParams.get('id') || 'mirage'; 
 
-        // 动态修改标题和底图
         document.getElementById('mapTitle').textContent = currentMap.charAt(0).toUpperCase() + currentMap.slice(1);
         document.getElementById('gameMap').src = `${currentMap}/map-${currentMap}.webp`;
 
-        // 动态加载地图 JS
         const script = document.createElement('script');
         script.src = `${currentMap}/nades.js`;
         script.onload = () => { renderMarkers(); };
         document.body.appendChild(script);
 
-        // ==========================================
         const mapViewport = document.getElementById('mapViewport');
         const mapWrapper = document.getElementById('mapWrapper');
         const gameMap = document.getElementById('gameMap');
@@ -302,6 +324,20 @@
 
         const sidebar = document.getElementById('sidebar');
         const resizer = document.getElementById('resizer');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        // ====== 【适配核心 3】移动端抽屉菜单逻辑 ======
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('active');
+        });
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        });
+
+        // 桌面端拖拽边栏
         let isSidebarResizing = false;
         resizer.addEventListener('mousedown', () => { isSidebarResizing = true; resizer.classList.add('resizing'); document.body.style.cursor = 'col-resize'; });
         window.addEventListener('mousemove', (e) => { if (isSidebarResizing) sidebar.style.width = e.clientX + 'px'; });
@@ -310,7 +346,6 @@
         panelCloseBtn.addEventListener('click', () => { bottomLeftPanel.style.display = 'none'; });
 
         function getIconUrl(type) {
-            // 【路径修改 3】跟随鼠标的图标使用 assets 下的 svg
             if (type === 'smoke') return 'assets/smoke.svg';
             if (type === 'flash') return 'assets/flash.svg';
             if (type === 'molotov') return 'assets/molotov.svg';
@@ -345,7 +380,6 @@
             overlayTitle.textContent = name;
             overlaySubtitle.textContent = `投掷方式：${nadeData.throwType} | 类型：${nadeData.type.toUpperCase()}`;
 
-            // 【路径修改 4】从当前地图的文件夹读取
             overlayPos.src = `${currentMap}/lineup/${name}_pos.jpg`;      
             overlayLineup.src = `${currentMap}/lineup/${name}.jpg`;       
             overlayResult.src = `${currentMap}/result/${name}.jpg`;       
@@ -373,11 +407,10 @@
         });
 
         function handlePointEnter(e, nadeData) {
-            if (isDevMode || hasDragged) return;
+            if (isDevMode || hasDragged || window.innerWidth <= 768) return; // 手机端不触发Hover
             ttName.textContent = nadeData.name;
             ttThrow.textContent = `投掷: ${nadeData.throwType}`;
             ttLineupImg.style.display = 'block';
-            // 【路径修改 5】从当前地图的文件夹读取
             ttLineupImg.src = `${currentMap}/lineup/${nadeData.name}_close.jpg`; 
             ttLineupImg.onerror = () => ttLineupImg.style.display = 'none';
             hoverTooltip.style.display = 'block';
@@ -386,7 +419,7 @@
         }
 
         function handlePointLeave() {
-            if (isDevMode) return; hoverTooltip.style.display = 'none'; 
+            if (isDevMode || window.innerWidth <= 768) return; hoverTooltip.style.display = 'none'; 
         }
 
         function handlePointClick(e, nadeData) {
@@ -394,7 +427,6 @@
             blName.textContent = nadeData.name;
             blThrow.textContent = `投掷方式：${nadeData.throwType}`;
             
-            // 【路径修改 6】从当前地图的文件夹读取
             blLineupImg.src = `${currentMap}/lineup/${nadeData.name}_close.jpg`; 
             blResultImg.src = `${currentMap}/result/${nadeData.name}.jpg`; 
             
@@ -455,7 +487,10 @@
             devCursor.style.border = 'none'; devCursor.style.backgroundColor = 'transparent'; devCursor.style.borderRadius = '0'; goToDevStep1(); 
         });
 
-        function getMapPercents(e) { const rect = gameMap.getBoundingClientRect(); return { x: (((e.clientX - rect.left) / rect.width) * 100).toFixed(2), y: (((e.clientY - rect.top) / rect.height) * 100).toFixed(2) }; }
+        function getMapPercents(clientX, clientY) { 
+            const rect = gameMap.getBoundingClientRect(); 
+            return { x: (((clientX - rect.left) / rect.width) * 100).toFixed(2), y: (((clientY - rect.top) / rect.height) * 100).toFixed(2) }; 
+        }
 
         mapViewport.addEventListener('click', (e) => {
             if (hasDragged) return; 
@@ -466,11 +501,11 @@
                     const throws = nadesData.filter(n => parseFloat(n.endX).toFixed(2) === ex && parseFloat(n.endY).toFixed(2) === ey && n.type === type);
                     enterFocusMode(marker, throws, ex, ey); return;
                 }
-                if(e.target.closest('.throw-point')) return; 
+                if(e.target.closest('.throw-point') || e.target.closest('.mobile-menu-btn') || e.target.closest('.bottom-left-panel')) return; 
                 resetFocusMode(); return;
             }
             if (isDevMode) {
-                const coords = getMapPercents(e);
+                const coords = getMapPercents(e.clientX, e.clientY);
                 if (devStep === 1) { const marker = e.target.closest('.nade-marker'); if (marker) { devNade.endX = marker.dataset.endx; devNade.endY = marker.dataset.endy; } else { devNade.endX = coords.x; devNade.endY = coords.y; } goToDevStep2(); } 
                 else if (devStep === 2) { const throwPoint = e.target.closest('.dev-throw-point'); if (throwPoint) { devNade.startX = throwPoint.dataset.startx; devNade.startY = throwPoint.dataset.starty; } else { devNade.startX = coords.x; devNade.startY = coords.y; } showDevModal(); }
             }
@@ -494,16 +529,68 @@
 
         function applyFilters() { const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-target'); document.querySelectorAll('.nade-marker').forEach(marker => { if (activeFilter === 'all' || marker.dataset.type === activeFilter) marker.style.display = 'block'; else marker.style.display = 'none'; }); }
 
-        filterBtns.forEach(btn => { btn.addEventListener('click', () => { if (btn.classList.contains('disabled')) return; resetFocusMode(); filterBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); if (isDevMode) { goToDevStep1(); devCursor.style.width = '36px'; devCursor.style.height = '36px'; devCursor.style.border = 'none'; devCursor.style.backgroundColor = 'transparent'; devCursor.style.borderRadius = '0'; } applyFilters(); }); });
+        filterBtns.forEach(btn => { 
+            btn.addEventListener('click', () => { 
+                if (btn.classList.contains('disabled')) return; 
+                resetFocusMode(); filterBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); 
+                if (isDevMode) { goToDevStep1(); devCursor.style.width = '36px'; devCursor.style.height = '36px'; devCursor.style.border = 'none'; devCursor.style.backgroundColor = 'transparent'; devCursor.style.borderRadius = '0'; } 
+                applyFilters(); 
+                // 手机端点击过滤条件后自动收起菜单
+                if(window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('active'); }
+            }); 
+        });
 
         let scale = 1; let translateX = 0; let translateY = 0; let isDragging = false; let startX, startY;
         function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
         function updateMapTransform() { const rect = mapViewport.getBoundingClientRect(); const scaledWidth = mapWrapper.offsetWidth * scale; const scaledHeight = mapWrapper.offsetHeight * scale; const bufferX = rect.width / 3; const bufferY = rect.height / 3; const maxTx = Math.max(0, (scaledWidth - rect.width) / 2) + bufferX; const maxTy = Math.max(0, (scaledHeight - rect.height) / 2) + bufferY; translateX = clamp(translateX, -maxTx, maxTx); translateY = clamp(translateY, -maxTy, maxTy); mapWrapper.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`; }
         
+        // PC 端鼠标事件
         mapViewport.addEventListener('wheel', (e) => { e.preventDefault(); const scaleStep = 0.15; const oldScale = scale; if (e.deltaY > 0) scale = Math.max(1, scale - scaleStep); else scale = Math.min(4.0, scale + scaleStep); if (scale !== oldScale) { const rect = mapViewport.getBoundingClientRect(); const mouseX = e.clientX - rect.left; const mouseY = e.clientY - rect.top; const ratio = scale / oldScale - 1; translateX -= (mouseX - rect.width / 2 - translateX) * ratio; translateY -= (mouseY - rect.height / 2 - translateY) * ratio; updateMapTransform(); } });
         mapViewport.addEventListener('mousedown', (e) => { if (e.button === 0 && !isSidebarResizing) { isDragging = true; hasDragged = false; startX = e.clientX - translateX; startY = e.clientY - translateY; } });
         window.addEventListener('mousemove', (e) => { if (isDragging && !isSidebarResizing) { translateX = e.clientX - startX; translateY = e.clientY - startY; updateMapTransform(); } if (isDevMode && devStep > 0) { devCursor.style.left = e.clientX + 'px'; devCursor.style.top = e.clientY + 'px'; } });
         window.addEventListener('mouseup', () => { isDragging = false; setTimeout(() => hasDragged = false, 50); });
+
+        // ====== 【适配核心 4】移动端手势事件 (拖拽与双指缩放) ======
+        let initialDistance = null;
+        let initialScale = 1;
+
+        // 绑定到 document 级并使用 passive: false 防止移动端系统滚动导致页面乱跳
+        mapViewport.addEventListener('touchstart', (e) => {
+            // 如果点在UI上，不触发地图拖拽
+            if(e.target.closest('.nade-marker') || e.target.closest('.throw-point') || e.target.closest('.bottom-left-panel') || e.target.closest('.mobile-menu-btn')) return;
+            
+            if (e.touches.length === 1) {
+                isDragging = true; hasDragged = false;
+                startX = e.touches[0].clientX - translateX;
+                startY = e.touches[0].clientY - translateY;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                initialDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                initialScale = scale;
+            }
+        }, {passive: false});
+
+        mapViewport.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) e.preventDefault(); // 锁死屏幕，禁止移动端下拉刷新
+            
+            if (isDragging && e.touches.length === 1) {
+                translateX = e.touches[0].clientX - startX;
+                translateY = e.touches[0].clientY - startY;
+                hasDragged = true;
+                updateMapTransform();
+            } else if (e.touches.length === 2 && initialDistance) {
+                const currentDistance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                const zoomFactor = currentDistance / initialDistance;
+                scale = Math.min(Math.max(1, initialScale * zoomFactor), 4.0);
+                updateMapTransform();
+            }
+        }, {passive: false});
+
+        window.addEventListener('touchend', (e) => {
+            isDragging = false;
+            if (e.touches.length < 2) initialDistance = null;
+            setTimeout(() => hasDragged = false, 50);
+        });
 
         updateMapTransform();
     </script>
