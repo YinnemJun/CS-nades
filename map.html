@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuke 道具地图 - CS2 Nades</title>
+    <title>CS2 Nades - 道具教学</title>
     <style>
         /* ====== 全局基础样式 ====== */
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Arial', sans-serif; background-color: #1b1b1f; color: white; overflow: hidden; user-select: none; }
@@ -24,10 +24,12 @@
         .filter-btn.active { background-color: #55555e; box-shadow: inset 6px 0 0 #fff; }
         .filter-btn.disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
         .btn-icon { display: inline-block; width: 48px; height: 48px; margin-right: 15px; flex-shrink: 0; background-size: 100%; background-position: center; background-repeat: no-repeat; }
-        .icon-all { background-image: url('../assets/all-icon.png'); }
-        .icon-smoke { background-image: url('../assets/smoke-icon.png'); }
-        .icon-flash { background-image: url('../assets/flash-icon.png'); }
-        .icon-molotov { background-image: url('../assets/molotov-icon.png'); }
+        
+        /* 【路径修改 1】左边栏的图标，使用带有 -icon 的 png 图片，放在 assets 文件夹中 */
+        .icon-all { background-image: url('assets/all-icon.png'); }
+        .icon-smoke { background-image: url('assets/smoke-icon.png'); }
+        .icon-flash { background-image: url('assets/flash-icon.png'); }
+        .icon-molotov { background-image: url('assets/molotov-icon.png'); }
 
         /* ====== 右侧地图区域 ====== */
         .map-viewport { flex: 1; position: relative; overflow: hidden; background-color: #121214; }
@@ -44,9 +46,11 @@
         .nade-marker:hover { transform: translate(-50%, -50%) scale(1.2); }
         .nade-marker.dimmed { opacity: 0; pointer-events: none; }
         .badge { position: absolute; top: -6px; right: -8px; background-color: white; color: black; font-size: 13px; font-weight: bold; padding: 2px 6px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
-        .marker-smoke { background-image: url('../assets/smoke.svg'); }
-        .marker-flash { background-image: url('../assets/flash.svg'); }
-        .marker-molotov { background-image: url('../assets/molotov.svg'); }
+        
+        /* 【路径修改 2】地图上的落点标记，使用 svg 图片，放在 assets 文件夹中 */
+        .marker-smoke { background-image: url('assets/smoke.svg'); }
+        .marker-flash { background-image: url('assets/flash.svg'); }
+        .marker-molotov { background-image: url('assets/molotov.svg'); }
 
         /* ====== Hover 悬浮提示框 ====== */
         .nade-tooltip { position: fixed; background: rgba(0,0,0,0.9); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; transform: translate(-50%, -100%); margin-top: -15px; border: 1px solid #ffb300; box-shadow: 0 8px 20px rgba(0,0,0,0.7); text-align: center; }
@@ -77,13 +81,17 @@
         .detail-header p { margin: 5px 0 0 0; color: #ccc; font-size: 15px; }
         .detail-content { max-width: 1000px; margin: 40px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 40px; width: 100%; box-sizing: border-box; }
         
-        /* 步骤卡片样式 */
         .step-card { background-color: #1a1a1c; border: 1px solid #333; border-radius: 12px; padding: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .step-card h2 { margin-top: 0; color: #fff; border-bottom: 2px solid #333; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
         .step-badge { background-color: #ffb300; color: black; padding: 4px 10px; border-radius: 6px; font-size: 16px; font-weight: bold; }
         .img-wrapper { width: 100%; border-radius: 8px; overflow: hidden; background-color: #000; display: flex; justify-content: center; }
         .img-wrapper img { max-width: 100%; height: auto; display: block; }
         #step2-container { display: none; }
+        
+        /* 瞄点放大图 (画中画效果) */
+        .lineup-wrapper { position: relative; }
+        .lineup-close-img { position: absolute; bottom: 20px; right: 20px; width: 25%; min-width: 120px; max-width: 250px; aspect-ratio: 1 / 1; object-fit: cover; border: 3px solid #ffb300; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,0,0,0.8); display: none; z-index: 10; }
+        @media (max-width: 768px) { .lineup-close-img { bottom: 10px; right: 10px; width: 30%; border-width: 2px; } }
 
         /* ====== 开发者模式 ====== */
         .dev-toggle-container { position: absolute; top: 20px; left: 20px; background-color: rgba(0, 0, 0, 0.8); padding: 15px 20px; border-radius: 8px; z-index: 20; border: 1px solid #444; display: flex; flex-direction: column; gap: 10px; }
@@ -104,35 +112,14 @@
         .btn-confirm:hover { background-color: #e09e00; }
         .btn-cancel { background-color: #444; color: white; }
         .btn-cancel:hover { background-color: #555; }
-        /* ====== 瞄点放大图 (画中画效果) ====== */
-        .lineup-wrapper { position: relative; }
-        .lineup-close-img {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 25%; /* 自适应大小 */
-            min-width: 120px;
-            max-width: 250px;
-            aspect-ratio: 1 / 1; /* 强制为正方形 */
-            object-fit: cover; /* 保证图片不变形 */
-            border: 3px solid #ffb300; /* 黄金色边框，非常醒目 */
-            border-radius: 50%; /* 圆形放大镜效果。如果你更喜欢圆角矩形，可以改为 12px */
-            box-shadow: 0 8px 20px rgba(0,0,0,0.8);
-            display: none; /* 默认隐藏，图片加载成功后才显示 */
-            z-index: 10;
-        }
-        /* 适配竖屏手机，缩小边距和大小 */
-        @media (max-width: 768px) {
-            .lineup-close-img { bottom: 10px; right: 10px; width: 30%; border-width: 2px; }
-        }
     </style>
 </head>
 <body>
 
     <div class="main-container">
         <div class="sidebar" id="sidebar">
-            <a href="../index.html" class="back-link">← 返回地图选择</a>
-            <div class="map-title">Nuke</div>
+            <a href="index.html" class="back-link">← 返回地图选择</a>
+            <div class="map-title" id="mapTitle">Loading...</div>
             <div class="filter-section">
                 <div class="nade-filters" id="filter-buttons">
                     <button class="filter-btn active" data-target="all" id="btn-all"><span class="btn-icon icon-all"></span> All Nades</button>
@@ -177,7 +164,7 @@
             <div class="zoom-hint">点击背景可重置视图 | 滚轮缩放</div>
 
             <div class="map-wrapper" id="mapWrapper">
-                <img src="map-nuke.webp" alt="Nuke Map" class="game-map" id="gameMap" draggable="false">
+                <img src="" alt="Game Map" class="game-map" id="gameMap" draggable="false">
                 <svg id="lineLayer" class="map-lines" style="width: 100%; height: 100%;"></svg>
                 <div id="throw-points-container"></div>
                 <div id="markers-container"></div>
@@ -246,17 +233,29 @@
                 </div>
             </div>
             <div id="devOutputArea" style="display: none; flex-direction: column; gap: 10px;">
-                <label style="color: #00ff00;">代码已生成！</label>
+                <label style="color: #00ff00;">代码已生成！请复制到对应地图的 js 文件中：</label>
                 <textarea id="devCodeOutput" rows="9" readonly></textarea>
                 <button class="btn-confirm" id="devCloseBtn">完成并关闭</button>
             </div>
         </div>
     </div>
 
-    <script src="nades.js"></script>
-
     <script>
-        
+        // ====== 通过网址读取当前地图信息 ======
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentMap = urlParams.get('id') || 'mirage'; 
+
+        // 动态修改标题和底图
+        document.getElementById('mapTitle').textContent = currentMap.charAt(0).toUpperCase() + currentMap.slice(1);
+        document.getElementById('gameMap').src = `${currentMap}/map-${currentMap}.webp`;
+
+        // 动态加载地图 JS
+        const script = document.createElement('script');
+        script.src = `${currentMap}/nades.js`;
+        script.onload = () => { renderMarkers(); };
+        document.body.appendChild(script);
+
+        // ==========================================
         const mapViewport = document.getElementById('mapViewport');
         const mapWrapper = document.getElementById('mapWrapper');
         const gameMap = document.getElementById('gameMap');
@@ -265,7 +264,6 @@
         const throwPointsContainer = document.getElementById('throw-points-container');
         const lineLayer = document.getElementById('lineLayer');
         
-        // Tooltip 和 左下角 DOM
         const hoverTooltip = document.getElementById('hoverTooltip');
         const ttName = document.getElementById('ttName');
         const ttThrow = document.getElementById('ttThrow');
@@ -279,20 +277,18 @@
         const blDetailBtn = document.getElementById('blDetailBtn');
         const panelCloseBtn = document.getElementById('panelCloseBtn');
 
-        // ====== 覆盖层 Overlay DOM ======
         const detailOverlay = document.getElementById('detailOverlay');
         const overlayBackBtn = document.getElementById('overlayBackBtn');
         const overlayTitle = document.getElementById('overlayTitle');
         const overlaySubtitle = document.getElementById('overlaySubtitle');
-        const overlayPos = document.getElementById('overlayPos');       // 1. 站位
-        const overlayLineup = document.getElementById('overlayLineup'); // 2. 瞄点
-        const overlayLineupClose = document.getElementById('overlayLineupClose'); // 【新增】瞄点放大图 // 2. 瞄点
-        const overlayStep2 = document.getElementById('overlayStep2');   // 3. 跑动
-        const overlayResult = document.getElementById('overlayResult'); // 4. 结果
+        const overlayPos = document.getElementById('overlayPos');       
+        const overlayLineup = document.getElementById('overlayLineup'); 
+        const overlayLineupClose = document.getElementById('overlayLineupClose'); 
+        const overlayStep2 = document.getElementById('overlayStep2');   
+        const overlayResult = document.getElementById('overlayResult'); 
         const step2Container = document.getElementById('step2-container');
         const resultBadge = document.getElementById('resultBadge');
 
-        // Dev 模式
         const devModeSwitch = document.getElementById('devModeSwitch');
         const devHintText = document.getElementById('devHintText');
         const btnAll = document.getElementById('btn-all');
@@ -304,7 +300,6 @@
         let isDevMode = false; let devStep = 0; 
         let devNade = { type: 'smoke', endX: '', endY: '', startX: '', startY: '' };
 
-        // 拖拽边栏
         const sidebar = document.getElementById('sidebar');
         const resizer = document.getElementById('resizer');
         let isSidebarResizing = false;
@@ -315,9 +310,10 @@
         panelCloseBtn.addEventListener('click', () => { bottomLeftPanel.style.display = 'none'; });
 
         function getIconUrl(type) {
-            if (type === 'smoke') return '../assets/smoke.svg';
-            if (type === 'flash') return '../assets/flash.svg';
-            if (type === 'molotov') return '../assets/molotov.svg';
+            // 【路径修改 3】跟随鼠标的图标使用 assets 下的 svg
+            if (type === 'smoke') return 'assets/smoke.svg';
+            if (type === 'flash') return 'assets/flash.svg';
+            if (type === 'molotov') return 'assets/molotov.svg';
             return '';
         }
 
@@ -344,41 +340,28 @@
             applyFilters(); 
         }
 
-        // ==========================================
-        // 渲染内部覆盖层 (Overlay) - 4 个步骤逻辑
-        // ==========================================
         function openDetailOverlay(nadeData) {
             const name = nadeData.name;
-            
             overlayTitle.textContent = name;
             overlaySubtitle.textContent = `投掷方式：${nadeData.throwType} | 类型：${nadeData.type.toUpperCase()}`;
 
-            // 配置图片
-            overlayPos.src = `./lineup/${name}_pos.png`;      // 步骤 1
-            overlayLineup.src = `./lineup/${name}.png`;       // 步骤 2
-            overlayResult.src = `./result/${name}.png`;       // 步骤 3或4
+            // 【路径修改 4】从当前地图的文件夹读取
+            overlayPos.src = `${currentMap}/lineup/${name}_pos.jpg`;      
+            overlayLineup.src = `${currentMap}/lineup/${name}.jpg`;       
+            overlayResult.src = `${currentMap}/result/${name}.jpg`;       
 
-            // 【新增】处理放大图 _close.png
-            overlayLineupClose.style.display = 'none'; // 每次打开先隐藏
-            overlayLineupClose.onload = function() {
-                overlayLineupClose.style.display = 'block'; // 图片存在且加载成功，才显示出来
-            };
-            overlayLineupClose.onerror = function() {
-                overlayLineupClose.style.display = 'none'; // 图片不存在，保持隐藏
-            };
-            overlayLineupClose.src = `./lineup/${name}_close.png`; // 触发加载
+            overlayLineupClose.style.display = 'none';
+            overlayLineupClose.onload = function() { overlayLineupClose.style.display = 'block'; };
+            overlayLineupClose.onerror = function() { overlayLineupClose.style.display = 'none'; };
+            overlayLineupClose.src = `${currentMap}/lineup/${name}_close.jpg`; 
 
-            // 跑动图处理
             step2Container.style.display = 'none';
-            resultBadge.textContent = '3'; // 默认无跑动，最后一步是 3
+            resultBadge.textContent = '3'; 
             
             overlayStep2.src = ''; 
-            overlayStep2.onload = function() {
-                step2Container.style.display = 'block'; 
-                resultBadge.textContent = '4'; // 有跑动，最后一步变成 4
-            };
+            overlayStep2.onload = function() { step2Container.style.display = 'block'; resultBadge.textContent = '4'; };
             overlayStep2.onerror = function() { console.log('此道具没有跑动图'); };
-            overlayStep2.src = `./lineup/${name}_step2.png`;
+            overlayStep2.src = `${currentMap}/lineup/${name}_step2.jpg`;
 
             detailOverlay.style.display = 'flex';
             setTimeout(() => { detailOverlay.classList.add('active'); }, 10);
@@ -389,13 +372,13 @@
             setTimeout(() => { detailOverlay.style.display = 'none'; }, 300); 
         });
 
-        // 交互悬浮和点击
         function handlePointEnter(e, nadeData) {
             if (isDevMode || hasDragged) return;
             ttName.textContent = nadeData.name;
             ttThrow.textContent = `投掷: ${nadeData.throwType}`;
             ttLineupImg.style.display = 'block';
-            ttLineupImg.src = `./lineup/${nadeData.name}.png`; // 改为 .png 且去掉 encode
+            // 【路径修改 5】从当前地图的文件夹读取
+            ttLineupImg.src = `${currentMap}/lineup/${nadeData.name}_close.jpg`; 
             ttLineupImg.onerror = () => ttLineupImg.style.display = 'none';
             hoverTooltip.style.display = 'block';
             const rect = e.target.getBoundingClientRect();
@@ -411,14 +394,14 @@
             blName.textContent = nadeData.name;
             blThrow.textContent = `投掷方式：${nadeData.throwType}`;
             
-            blLineupImg.src = `./lineup/${nadeData.name}.png`; // 改为 .png 且去掉 encode
-            blResultImg.src = `./result/${nadeData.name}.png`; // 改为 .png 且去掉 encode
+            // 【路径修改 6】从当前地图的文件夹读取
+            blLineupImg.src = `${currentMap}/lineup/${nadeData.name}_close.jpg`; 
+            blResultImg.src = `${currentMap}/result/${nadeData.name}.jpg`; 
             
             blDetailBtn.onclick = () => openDetailOverlay(nadeData);
             bottomLeftPanel.style.display = 'flex';
         }
 
-        // ====== 剩下的开发者模式和地图拖拽代码 ======
         devModeSwitch.addEventListener('change', (e) => {
             isDevMode = e.target.checked; resetFocusMode();
             if (isDevMode) {
@@ -522,7 +505,7 @@
         window.addEventListener('mousemove', (e) => { if (isDragging && !isSidebarResizing) { translateX = e.clientX - startX; translateY = e.clientY - startY; updateMapTransform(); } if (isDevMode && devStep > 0) { devCursor.style.left = e.clientX + 'px'; devCursor.style.top = e.clientY + 'px'; } });
         window.addEventListener('mouseup', () => { isDragging = false; setTimeout(() => hasDragged = false, 50); });
 
-        renderMarkers(); updateMapTransform();
+        updateMapTransform();
     </script>
 </body>
 </html>

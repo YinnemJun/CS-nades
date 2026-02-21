@@ -104,6 +104,27 @@
         .btn-confirm:hover { background-color: #e09e00; }
         .btn-cancel { background-color: #444; color: white; }
         .btn-cancel:hover { background-color: #555; }
+        /* ====== 瞄点放大图 (画中画效果) ====== */
+        .lineup-wrapper { position: relative; }
+        .lineup-close-img {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 25%; /* 自适应大小 */
+            min-width: 120px;
+            max-width: 250px;
+            aspect-ratio: 1 / 1; /* 强制为正方形 */
+            object-fit: cover; /* 保证图片不变形 */
+            border: 3px solid #ffb300; /* 黄金色边框，非常醒目 */
+            border-radius: 50%; /* 圆形放大镜效果。如果你更喜欢圆角矩形，可以改为 12px */
+            box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+            display: none; /* 默认隐藏，图片加载成功后才显示 */
+            z-index: 10;
+        }
+        /* 适配竖屏手机，缩小边距和大小 */
+        @media (max-width: 768px) {
+            .lineup-close-img { bottom: 10px; right: 10px; width: 30%; border-width: 2px; }
+        }
     </style>
 </head>
 <body>
@@ -183,8 +204,9 @@
 
             <div class="step-card">
                 <h2><span class="step-badge">2</span> 瞄准点 (Lineup)</h2>
-                <div class="img-wrapper">
+                <div class="img-wrapper lineup-wrapper">
                     <img id="overlayLineup" src="" alt="Lineup">
+                    <img id="overlayLineupClose" class="lineup-close-img" src="" alt="准星放大图">
                 </div>
             </div>
 
