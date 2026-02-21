@@ -571,6 +571,9 @@
         }, {passive: false});
 
         mapViewport.addEventListener('touchmove', (e) => {
+            // 【关键修复】如果手指滑动的是底部详情面板，则直接放行，允许原生上下滚动
+            if (e.target.closest('.bottom-left-panel')) return;
+
             if (e.touches.length > 0) e.preventDefault(); // 锁死屏幕，禁止移动端下拉刷新
             
             if (isDragging && e.touches.length === 1) {
